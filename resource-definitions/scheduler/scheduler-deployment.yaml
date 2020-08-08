@@ -1,0 +1,175 @@
+---
+# Source: airflow/templates/scheduler/scheduler-deployment.yaml
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+################################
+## Airflow Scheduler Deployment/StatefulSet
+#################################
+
+# Are we using a local/sequenial executor?
+# Are we using the kubernetes executor?
+# Is persistence enabled on the _workers_?
+# This is important because in $local mode, the scheduler assumes the role of the worker
+# If we're using a StatefulSet
+# If we're using elasticsearch logging
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: scheduler
+  namespace: airflow-on-k8s
+  labels:
+    tier: airflow
+    component: scheduler
+    release: RELEASE-NAME
+    chart: "airflow-1.0.0"
+    heritage: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      tier: airflow
+      component: scheduler
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        tier: airflow
+        component: scheduler
+        release: RELEASE-NAME
+      annotations:
+        checksum/metadata-secret: a3512f27fea8455cdddc51ef650052d74657bcaa16194d24b555417e312d43da
+        checksum/result-backend-secret: 4bd4a60ef60435fe29fc8135a43a436c0854074a228246c67a6e7488b138200f
+        checksum/pgbouncer-config-secret: da52bd1edfe820f0ddfacdebb20a4cc6407d296ee45bcb500a6407e2261a5ba2
+        checksum/airflow-config: 6132d4c762bec566a83667e8a23486fcbc29157811f277b66e6568047f627c14
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+    spec:
+      nodeSelector:
+        {}
+      affinity:
+        {}
+      tolerations:
+        []
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: scheduler-serviceaccount
+      securityContext:
+        runAsUser: 50000
+        fsGroup: 50000
+      initContainers:
+        - name: run-airflow-migrations
+          image: apache/airflow:1.10.10.1-alpha2-python3.6
+          imagePullPolicy: IfNotPresent
+          # Support running against 1.10.x and 2.0.0dev/master
+          args: ["bash", "-c", "airflow upgradedb || airflow db upgrade"]
+          env:          
+            # Dynamically created environment variables
+            # Dynamically created secret envs
+                      
+            # Hard Coded Airflow Envs
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fernet-key
+                  key: fernet-key
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-metadata
+                  key: connection
+            - name: AIRFLOW_CONN_AIRFLOW_DB
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-metadata
+                  key: connection
+      containers:
+        # Always run the main scheduler container.
+        - name: scheduler
+          image: apache/airflow:1.10.10.1-alpha2-python3.6
+          imagePullPolicy: IfNotPresent
+          args: ["scheduler"]
+          env:          
+            # Dynamically created environment variables
+            # Dynamically created secret envs
+                      
+            # Hard Coded Airflow Envs
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fernet-key
+                  key: fernet-key
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-metadata
+                  key: connection
+            - name: AIRFLOW_CONN_AIRFLOW_DB
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-metadata
+                  key: connection
+          # If the scheduler stops heartbeating for 5 minutes (10*30s) kill the
+          # scheduler and let Kubernetes restart it
+          livenessProbe:
+            failureThreshold: 10
+            periodSeconds: 30
+            exec:
+              command:
+              - python
+              - -Wignore
+              - -c
+              - |
+                import os
+                os.environ['AIRFLOW__CORE__LOGGING_LEVEL'] = 'ERROR'
+                os.environ['AIRFLOW__LOGGING__LOGGING_LEVEL'] = 'ERROR'
+
+                from airflow.jobs.scheduler_job import SchedulerJob
+                from airflow.utils.net import get_hostname
+                import sys
+
+                job = SchedulerJob.most_recent_job()
+                sys.exit(0 if job.is_alive() and job.hostname == get_hostname() else 1)
+          resources:
+            {}
+          volumeMounts:
+            - name: logs-pv
+              mountPath: "/opt/airflow/logs"
+            - name: dags-pv
+              mountPath: "/opt/airflow/dags"
+            - name: config
+              mountPath: "/opt/airflow/airflow.cfg"
+              subPath: airflow.cfg
+              readOnly: true
+        # Always start the garbage collector sidecar.
+        - name: scheduler-gc
+          image: apache/airflow:1.10.10.1-alpha2-python3.6
+          imagePullPolicy: IfNotPresent
+          args: ["bash", "/clean-logs"]
+          volumeMounts:
+            - name: logs-pv
+              mountPath: "/opt/airflow/logs"
+      volumes:
+        - name: config
+          configMap:
+            name: airflow-config
+        - name: dags-pv
+          persistentVolumeClaim:
+            claimName: dags-pvc
+        - name: logs-pv
+          persistentVolumeClaim:
+            claimName: logs-pvc

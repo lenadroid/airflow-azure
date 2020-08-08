@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: dags-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain  # if set as "Delete" file share would be removed in pvc deletion
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=0
+    - gid=0
+    - mfsymlinks
+    - cache=strict  # https://linux.die.net/man/8/mount.cifs
+    - nosharesock
+  csi:
+    driver: file.csi.azure.com
+    readOnly: false
+    volumeHandle: fs-dags  # make sure it's a unique id in the cluster
+    volumeAttributes:
+      shareName: airfilesystem  # only file share name, don't use full path
+      server: airfilesystem.file.core.windows.net  # optional, provide a new address to replace default "accountname.file.core.windows.net"
+    nodeStageSecretRef:
+      name: azure-secret
+      namespace: default

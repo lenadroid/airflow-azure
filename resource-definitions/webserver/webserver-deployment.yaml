@@ -1,0 +1,130 @@
+---
+# Source: airflow/templates/webserver/webserver-deployment.yaml
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+################################
+## Airflow Webserver Deployment
+#################################
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: webserver
+  namespace: airflow-on-k8s
+  labels:
+    tier: airflow
+    component: webserver
+    release: RELEASE-NAME
+    chart: "airflow-1.0.0"
+    heritage: Helm
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      tier: airflow
+      component: webserver
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        tier: airflow
+        component: webserver
+        release: RELEASE-NAME
+      annotations:
+        checksum/metadata-secret: a3512f27fea8455cdddc51ef650052d74657bcaa16194d24b555417e312d43da
+        checksum/pgbouncer-config-secret: da52bd1edfe820f0ddfacdebb20a4cc6407d296ee45bcb500a6407e2261a5ba2
+        checksum/airflow-config: 6132d4c762bec566a83667e8a23486fcbc29157811f277b66e6568047f627c14
+    spec:
+      nodeSelector:
+        {}
+      affinity:
+        {}
+      tolerations:
+        []
+      restartPolicy: Always
+      securityContext:
+        runAsUser: 50000
+        fsGroup: 50000
+      containers:
+        - name: webserver
+          image: apache/airflow:1.10.10.1-alpha2-python3.6
+          imagePullPolicy: IfNotPresent
+          args: ["webserver"]
+          resources:
+            {}
+          volumeMounts:
+            - name: config
+              mountPath: "/opt/airflow/airflow.cfg"
+              subPath: airflow.cfg
+              readOnly: true
+            - name: logs-pv
+              mountPath: "/opt/airflow/logs"
+            - name: dags-pv
+              mountPath: "/opt/airflow/dags"
+          ports:
+            - name: webserver-ui
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            timeoutSeconds: 30
+            failureThreshold: 20
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            timeoutSeconds: 30
+            failureThreshold: 20
+            periodSeconds: 5
+          env:          
+            # Dynamically created environment variables
+            # Dynamically created secret envs
+                      
+            # Hard Coded Airflow Envs
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fernet-key
+                  key: fernet-key
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-metadata
+                  key: connection
+            - name: AIRFLOW_CONN_AIRFLOW_DB
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-metadata
+                  key: connection
+      volumes:
+        - name: config
+          configMap:
+            name: airflow-config
+        - name: dags-pv
+          persistentVolumeClaim:
+            claimName: dags-pvc
+        - name: logs-pv
+          persistentVolumeClaim:
+            claimName: logs-pvc
