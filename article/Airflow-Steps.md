@@ -2,15 +2,131 @@
 
 ## Overview
 
+To get started, you will need access to a cloud subscription, such as Azure, AWS, or Google Cloud. The example in this article is based on Azure, however, you should be able to successfully follow the same steps for AWS or GCP with minor changes.
+
+To follow the example on Azure, feel free to create an [account](https://azure.microsoft.com/en-us/free?WT.mc_id=airflow-blog-alehall), and install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest&WT.mc_id=airflow-blog-alehall) or use [Azure Portal](https://azure.microsoft.com/en-us/features/azure-portal?WT.mc_id=airflow-blog-alehall) to create necessary resources. If using Azure CLI, don't forget to login and initialize your session with subscription ID:
+
+```bash
+az login
+az account set --subscription <subscription-id>
+```
+
+To make sure you can easily delete all the resources at once after giving it a try, create an Azure Resource Group that will serve as a grouping unit:
+
+```bash
+RESOURCE_GROUP_NAME="airflow"
+REGION="East US"
+az group create --name $RESOURCE_GROUP_NAME --region $REGION
+```
+
+After you are done with resources, feel free to delete the entire resource group:
+
+```bash
+az group delete --name $RESOURCE_GROUP_NAME
+```
+
 ## PostgreSQL
+
+For Apache Airflow, a database is required to store metadata information the status of tasks. Since Airflow is built to work with a metadata database through SQLAlchemy abstraction layer. [SQLAlchemy](https://www.sqlalchemy.org/) is Python SQL toolkit and Object Relational Mapper. Any database that supports SQLAlchemy should work with Airflow. MySQL or PostgreSQL are some of the most common choices.
+
+To create and successfully connect to an instance of PostgreSQL on Azure, please follow detailed instructions [here](https://docs.microsoft.com/en-us/azure/postgresql/quickstart-create-server-database-azure-cli?WT.mc_id=airflow-blog-alehall). 
+
+Feel free to use the same resource group name and location for the PostgreSQL instance. Make sure to indicate a unique server name. I chose `GP_Gen5_2` as an instance size, as 2 vCores and 100 GB of storage is more than enough for the example, but feel free to pick the [size](https://azure.microsoft.com/en-us/pricing/details/postgresql/server?WT.mc_id=airflow-blog-alehall) that fits your own requirements. 
+
+It is important to remember what your PostgreSQL server name, fully qualified domain name, username, and password are. This information will be required during the next steps. Note: you can get fully qualified domain name by looking at the `fullyQualifiedDomainName` after executing the command:
+
+```bash
+POSTGRESQL_SERVER_NAME="<your-server-name>"
+az postgres server show --resource-group $RESOURCE_GROUP_NAME --name $POSTGRESQL_SERVER_NAME
+# example value of fullyQualifiedDomainName on Azure: airflowazuredb.postgres.database.azure.com
+```
+
+Check connection to your database using [`PSQL`](https://www.postgresql.org/docs/9.3/app-psql.html):
+
+```bash
+P_USER_NAME="your-postgres-username"
+psql --host=$POSTGRESQL_SERVER_NAME.postgres.database.azure.com --port=5432 --username=$P_USER_NAME@$POSTGRESQL_SERVER_NAME --dbname=postgres
+```
+
+For AWS or GCP, feel free to use Amazon RDS for PostgreSQL or Google Cloud SQL for PostgreSQL respectively.
 
 ## File Share
 
-Copy one or several DAGs you might have to your newly created fileshare. If you don't have any DAGs yet, you can use one of those available online. For example, [the following DAG from one of the GitHub repositories](https://github.com/hgrif/airflow-tutorial) called `airflow_tutorial_v01`, which you can also find [here](todo).
+When running data management workflows, we need to store Apache Airflow Directed Acyclic Grapth (DAG) definitions somewhere. When running Apache Airflow locally, we can store them in a local filesystem directory and point to it through the configuration file. When running Airflow in a Docker container (either locally or in the cloud), we have several options.
+* Storing data pipeline DAGs directly within the container image. The downside of this approach is when there is a possibility and likelihood of frequent changes to DAGs. This would imply the necessity to rebuild the image each time your DAGs change.
+* Storing DAG definitions in a remote Git repository. When there are changes within DAG definitions, using [Git-Sync sidecar](https://github.com/kubernetes/git-sync) can automatically synchronize the repository with the volume in your container.
+* Storing DAGs in a shared remote location, such as remote filesystem. Same as with a remote Git repository, we can mount a remote filesystem to a volume in our container and mirror DAG changes automatically. Kubernetes supports a variery of [CSI drivers](https://kubernetes-csi.github.io/docs/drivers.html) for many remote filesystems, including Azure Files, AWS Elastic File System, or Google Cloud Filestore. This approach is great if you also want to store logs somewhere in a remote location.
+
+I am using [Azure Files](https://docs.microsoft.com/en-us/azure/storage/files/storage-how-to-create-file-share?WT.mc_id=airflow-blog-alehall) for storing DAG definitions. To create an Azure fileshare, execute the following commands:
+
+```bash
+STORAGE_ACCOUNT="storage-account-name"
+FILESHARE_NAME="fileshare-name"
+
+az storage account create \
+    --resource-group $RESOURCE_GROUP_NAME \
+    --name $STORAGE_ACCOUNT \
+    --kind StorageV2 \
+    --sku Standard_ZRS \
+    --output none
+
+STORAGE_ACCOUNT_KEY=$(az storage account keys list \
+    --resource-group $RESOURCE_GROUP_NAME \
+    --account-name $STORAGE_ACCOUNT \
+    --query "[0].value" | tr -d '"')
+
+az storage share create \
+    --account-name $STORAGE_ACCOUNT \
+    --account-key $STORAGE_ACCOUNT_KEY \
+    --name $FILESHARE_NAME \
+    --quota 1024 \
+    --output none
+```
+For Azure Files, detailed creation instructions are located [here](https://docs.microsoft.com/en-us/azure/storage/files/storage-how-to-create-file-share?tabs=azure-cli&WT.mc_id=airflow-blog-alehall). Feel free to create a fileshare on any of the other platforms to follow along.
+
+After the fileshare is created, you can copy one or several DAGs you might have to your newly created storage. If you don't have any DAGs yet, you can use one of those available online. For example, [the following DAG from one of the GitHub repositories](https://github.com/hgrif/airflow-tutorial) called `airflow_tutorial_v01`, which you can also find [here](https://github.com/lenadroid/airflow-azure/blob/master/DAGs/hello_dag.py).
+
+To copy files to Azure Files share, you can use Azure Portal, or [AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files?toc=/azure/storage/files/toc.json#upload-files?WT.mc_id=airflow-blog-alehall) util for programmatic operations.
+
+![Azure Portal Files Upload](images/files-upload.png)
 
 ## Kubernetes cluster
 
+For Apache Airflow scheduler, UI, and executor workers, we need to create a cluster. For Azure Kubernetes Service, detailed cluster creation instructions are [here](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough-portal). Make sure to indicate that you'd like the cluster to be provisioned in a Virtual Network (default installation doesn't include it). 
+
+I created the cluster with Azure Portal with the following configuration:
+
+![AKS 1st step](images/aks-1.png)
+
+Node pools:
+
+![AKS 2nd step](images/aks-2.png)
+
+Authentication:
+
+![AKS 3rd step](images/aks-3.png)
+
+Networking:
+
+![AKS 4th step](images/aks-4.png)
+
 ## Allow cluster to access database
+
+To make sure the AKS cluster can communicate with the PostgreSQL on Azure database, we need to add a service endpoint on the AKS Virtual Network side and a Virtual Network rule on the PostgreSQL side.
+
+Go to the AKS virtual network resource in Azure Portal, it's located in the same resource group where the cluster is. Under `Service Endpoints` settings menu, select `Add`, and choose `Microsoft.SQL` from the dropdown:
+
+![AKS SQL Service Endpoint](images/aks-sql-endpoint.png)
+
+Go to the PostgreSQL on Azure resource, and under `Connection Security` settings menu `VNET rules` section, select `Add existing virtual network`:
+
+![PostgreSQL VNet Rule 1](images/db-vnet-rule-1.png)
+
+Specify a name for the  Virtual Network rule, select your subscription and the AKS Virtual Network:
+
+![PostgreSQL VNet Rule 2](images/db-vnet-rule-2.png)
+
+These actions will make sure Apache Airflow pods on AKS are able to communicate with the database successfully.
 
 ## Prepare fileshare to be used within Kuberneres
 
