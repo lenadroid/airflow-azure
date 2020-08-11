@@ -1,14 +1,18 @@
-# Airflow on Azure
+# Apache Airflow on Azure
 
 ## Architecture
 
-![Diagram for generic use case](tbd)
+General architecture:
 
-![Diagram for Azure](tbd)
+![Diagram for generic use case](images/general-diagram.png)
 
-![Diagram for AWS](tbd)
+Azure architecture:
 
-![Diagram for GCP](tbd)
+![Diagram for Azure](images/azure-diagram.png)
+
+GCP and AWS architecture:
+
+![Diagram for GCP and AWS](images/google-aws-diagram.png)
 
 
 ## Overview
