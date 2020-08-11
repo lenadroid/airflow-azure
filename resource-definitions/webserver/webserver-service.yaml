@@ -33,7 +33,7 @@ metadata:
     heritage: Helm
   annotations:
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     tier: airflow
     component: webserver

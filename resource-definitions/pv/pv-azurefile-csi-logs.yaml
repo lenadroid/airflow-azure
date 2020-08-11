@@ -21,8 +21,8 @@ spec:
     readOnly: false
     volumeHandle: fs-logs  # make sure it's a unique id in the cluster
     volumeAttributes:
-      shareName: airfilesystem  # only file share name, don't use full path
-      server: airfilesystem.file.core.windows.net  # optional, provide a new address to replace default "accountname.file.core.windows.net"
+      shareName: FILESHARE_NAME  # only file share name, don't use full path
+      server: STORAGE_ACCOUNT.file.core.windows.net  # optional, provide a new address to replace default "accountname.file.core.windows.net"
     nodeStageSecretRef:
       name: azure-secret
       namespace: default
