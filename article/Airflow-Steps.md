@@ -44,7 +44,7 @@ az group delete --name $RESOURCE_GROUP_NAME
 
 ## PostgreSQL
 
-For Apache Airflow, a database is required to store metadata information the status of tasks. Since Airflow is built to work with a metadata database through SQLAlchemy abstraction layer. [SQLAlchemy](https://www.sqlalchemy.org/) is Python SQL toolkit and Object Relational Mapper. Any database that supports SQLAlchemy should work with Airflow. MySQL or PostgreSQL are some of the most common choices.
+For Apache Airflow, a database is required to store metadata information the status of tasks. Airflow is built to work with a metadata database through SQLAlchemy abstraction layer. [SQLAlchemy](https://www.sqlalchemy.org/) is Python SQL toolkit and Object Relational Mapper. Any database that supports SQLAlchemy should work with Airflow. MySQL or PostgreSQL are some of the most common choices.
 
 To create and successfully connect to an instance of PostgreSQL on Azure, please follow detailed instructions [here](https://docs.microsoft.com/en-us/azure/postgresql/quickstart-create-server-database-azure-cli?WT.mc_id=airflow-blog-alehall). 
 
@@ -69,7 +69,7 @@ For AWS or GCP, feel free to use Amazon RDS for PostgreSQL or Google Cloud SQL f
 
 ## File Share
 
-When running data management workflows, we need to store Apache Airflow Directed Acyclic Grapth (DAG) definitions somewhere. When running Apache Airflow locally, we can store them in a local filesystem directory and point to it through the configuration file. When running Airflow in a Docker container (either locally or in the cloud), we have several options.
+When running data management workflows, we need to store Apache Airflow Directed Acyclic Graph (DAG) definitions somewhere. When running Apache Airflow locally, we can store them in a local filesystem directory and point to it through the configuration file. When running Airflow in a Docker container (either locally or in the cloud), we have several options.
 * Storing data pipeline DAGs directly within the container image. The downside of this approach is when there is a possibility and likelihood of frequent changes to DAGs. This would imply the necessity to rebuild the image each time your DAGs change.
 * Storing DAG definitions in a remote Git repository. When there are changes within DAG definitions, using [Git-Sync sidecar](https://github.com/kubernetes/git-sync) can automatically synchronize the repository with the volume in your container.
 * Storing DAGs in a shared remote location, such as remote filesystem. Same as with a remote Git repository, we can mount a remote filesystem to a volume in our container and mirror DAG changes automatically. Kubernetes supports a variery of [CSI drivers](https://kubernetes-csi.github.io/docs/drivers.html) for many remote filesystems, including Azure Files, AWS Elastic File System, or Google Cloud Filestore. This approach is great if you also want to store logs somewhere in a remote location.
@@ -152,7 +152,7 @@ These actions will make sure Apache Airflow pods on AKS are able to communicate 
 ## Prepare fileshare to be used within Kuberneres
 Install  a CSI driver corresponding to your platform.
 
-For Azure, follow instructions here to install [Azure File CSI driver](https://github.com/kubernetes-sigs/azurefile-csi-driver/blob/master/docs/install-csi-driver-master.md).
+For Azure, follow instructions to install [Azure Files CSI driver](https://github.com/kubernetes-sigs/azurefile-csi-driver/blob/master/docs/install-csi-driver-master.md).
 
 Create a secret to store Azure storage account name and key (make sure `STORAGE_ACCOUNT` and `STORAGE_ACCOUNT_KEY` contain your own values for storage account name and key). This secret will be used later in Persistent Volumes definitions for DAGs and logs.
 
@@ -164,7 +164,9 @@ kubectl create secret generic azure-secret --from-literal accountname=$STORAGE_A
 
 ![resources](images/yamls.png)
 
-You can clone the [GitHub repository](https://github.com/lenadroid/airflow-azure) to get these files. Before you apply them to your own clusters, make sure to review them and read through the notes in this article, as there are quite a few values that need to be customized.
+You can clone the [GitHub repository](https://github.com/lenadroid/airflow-azure) to get these files. Before you apply them to your own clusters, make sure to review them and read through the notes in this article, as there are quite a few values that might need to be customized.
+
+> Note: I initially got the files from the official Airflow GitHub repository [here](https://github.com/apache/airflow/tree/master/chart). I ran the `helm template` command to generate YAML files and deleted those that weren't relevant for this use case. My [GitHub repository](https://github.com/lenadroid/airflow-azure) now contains all the necessary files adjusted for this scenario, so you can skip the `helm template` step if you'd like to use & modify files under my repository. 
 
 ### Namespace
 
