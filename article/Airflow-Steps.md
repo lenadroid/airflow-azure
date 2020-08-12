@@ -1,6 +1,8 @@
 # Apache Airflow on Azure
 
-## Architecture
+## Introduction
+
+TBD
 
 General architecture:
 
@@ -166,9 +168,9 @@ You can clone the [GitHub repository](https://github.com/lenadroid/airflow-azure
 
 ### Namespace
 
-*******
+Having a namespace is a good way to identify resources that belong to the same logical group. In this case, we can create a namespace to assign to all resources relevant for our Apache Airflow setup. This is especially convenient for distinguishing groups of resources when there are multiple components living within the same cluster.
 
-Definition of the namespace is in the [`airflow-namespace.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/airflow-namespace.yaml) file on GitHub.
+Definition of the namespace for all Airflow resources is in the [`airflow-namespace.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/airflow-namespace.yaml) file on GitHub.
 
 Create the namespace:
 ```bash
@@ -180,11 +182,9 @@ Make sure to remember to use the right namespace name when creating other resour
 
 ### Persistent Volumes for logs and DAGs
 
-*******
+As one of the ways to work with storage within the cluster, there is a resource called [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/). Its goal is to abstract away the details of the underlying storage provider it corresponds to, be it a shared network file system, external volume, or other cloud-specific storage type. Persistent Volume resource is configured with connection information or settings that would define how the cluster will connect to and work with the storage. Persistent Volume lifecycle is independent, and doesn't have to be attached to the lifecycle of a pod that uses it.
 
-Definition of a Persistent Volume for DAGs is in [`pv-azurefile-csi.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/pv/pv-azurefile-csi.yaml) file on GitHub.
-
-Definition of a Persistent Volume for logs is in [`pv-azurefile-csi-logs.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/pv/pv-azurefile-csi-logs.yaml) file on GitHub.
+In this case, we need an abstraction to represent storage for DAG definitions and for log files. Definition of a Persistent Volume resource for DAGs is in [`pv-azurefile-csi.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/pv/pv-azurefile-csi.yaml) file on GitHub. Definition of a Persistent Volume resource for logs is in [`pv-azurefile-csi-logs.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/pv/pv-azurefile-csi-logs.yaml) file on GitHub.
 
 Open `pv-azurefile-csi.yaml` and `pv-azurefile-csi-logs.yaml` files to edit them to include your own fileshare name and storage account name. If you followed the steps above, assign the parameter `shareName` to the value of `$FILESHARE_NAME` variable, and parameter `server` to the value of`$STORAGE_ACCOUNT.file.core.windows.net`.
 
@@ -198,11 +198,11 @@ kubectl create -f pv/pv-azurefile-csi-logs.yaml
 
 ### Persistent Volume Claims for logs and DAGs
 
-*******
+In addition to Persistent Volumes as a storage abstraction, we also have an abstraction that represents a request for storage, called [Persistent Volume Claim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/). The goal of Persistent Volume Claim is to represent a specific pod's request for storage combined with specific details, such as exact amount of storage, and access mode.
 
-Definition of a Persistent Volume Claim for DAGs is in [`pvc-azurefile-csi-static.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/pv/pvc-azurefile-csi-static.yaml) file on GitHub.
+We need to create Persistent Volume Claims for DAGs and logs, to make sure pods that interact with storage can use these claims to request access to the storage (Azure Files in this case).
 
-Definition of a Persistent Volume Claim for logs is in [`pvc-azurefile-csi-static-logs.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/pv/pvc-azurefile-csi-static-logs.yaml) file on GitHub.
+Definition of a Persistent Volume Claim resource for DAGs is in [`pvc-azurefile-csi-static.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/pv/pvc-azurefile-csi-static.yaml) file on GitHub. Definition of a Persistent Volume Claim resource for logs is in [`pvc-azurefile-csi-static-logs.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/pv/pvc-azurefile-csi-static-logs.yaml) file on GitHub.
 
 Create persistent volume claims:
 ```bash
@@ -221,11 +221,9 @@ logs-pvc   Bound    logs-pv   10Gi       RWX
 
 ### Service Accounts for scheduler and workers
 
-*******
+To allow certain processes perform certain tasks, there is a notion of [Service Accounts](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/). For example, we'd like to make sure Airflow scheduler is able to programmatically create, view, and manage pod resources for workers. To ensure this is possible, we need to create a Service Account for each component we want to grant certain priviliges to. Later, we can associate the Service Accounts with Cluster Roles by using Cluster Rolebindings.
 
-Definition of Scheduler Service Account is in the [`scheduler-serviceaccount.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/scheduler/scheduler-serviceaccount.yaml) file on GitHub.
-
-Definition of Worker Service Account is in the [`worker-serviceaccount.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/workers/worker-serviceaccount.yaml) file on GitHub.
+Definition of Scheduler Service Account is in the [`scheduler-serviceaccount.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/scheduler/scheduler-serviceaccount.yaml) file on GitHub. Definition of Worker Service Account is in the [`worker-serviceaccount.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/workers/worker-serviceaccount.yaml) file on GitHub.
 
 Create the service accounts:
 ```bash
@@ -235,9 +233,9 @@ kubectl create -f workers/worker-serviceaccount.yaml
 
 ### Cluster Role for scheduler and workers to dynamically operate pods
 
-*******
+A [Cluster Role](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole) represents a set of rules or permissions.
 
-Definition of the Cluster Role is in the [`pod-launcher-role.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/rbac/pod-launcher-role.yaml) file on GitHub.
+Definition of the Cluster Role we want to create is in the [`pod-launcher-role.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/rbac/pod-launcher-role.yaml) file on GitHub.
 
 Create the cluster role:
 ```bash
@@ -246,7 +244,7 @@ kubectl create -f rbac/pod-launcher-role.yaml
 
 ### Cluster Role Binding for scheduler and workers
 
-*******
+A [Cluster Rolebinding](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding) is a connection between a Cluster Role and accounts that need it.
 
 Definition of the Cluster Role is in the [`pod-launcher-rolebinding.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/rbac/pod-launcher-rolebinding.yaml) file on GitHub.
 
@@ -257,9 +255,15 @@ kubectl create -f rbac/pod-launcher-rolebinding.yaml
 
 ### Secrets
 
+[Secrets](https://kubernetes.io/docs/concepts/configuration/secret) is a mechanism if managing sensitive data, such as tokens, passwords, or keys that other resources in the cluster may require.
+
+> [Note](https://kubernetes.io/docs/concepts/configuration/secret/#risks): if you configure the secret through a manifest (JSON or YAML) file which has the secret data encoded as base64, sharing this file or checking it in to a source repository means the secret is compromised. Base64 encoding is not an encryption method and is considered the same as plain text.
+
+Apache Airflow needs to know what is the fernet key and how to connect to the metadata database. We will use secrets to represent this information.
+
 #### Fernet key
 
-*******
+Apache Airflow requires fernet key to make sure it can [secure connection information](https://airflow.readthedocs.io/en/stable/howto/secure-connections.html) that isn't protected by default.
 
 Start Python shell:
 ```bash
@@ -309,8 +313,6 @@ kubectl create -f secrets/fernet-secret.yaml
 
 #### Database connection information
 
-*******
-
 Prepare your PostgreSQL database connection. Generally, it follows the format of:
 
 ```bash
@@ -323,6 +325,10 @@ postgresql+psycopg2://user:password@hostname:5432/dbname
 Encode your connection using base64 (replace `airflowusername` with your username, `airflowpassword` with your password, `airflowhost` with your host, and `airflow` with your database name):
 
 ```bash
+# For general PostgreSQL
+echo -n "postgresql+psycopg2://airflowuser:airlowpassword@airflowhost.postgres.database.azure.com:5432/airflow" | base64
+
+# For Azure PostgreSQL
 echo -n "postgresql+psycopg2://airflowuser%40airflowhost:airlowpassword@airflowhost.postgres.database.azure.com:5432/airflow" | base64
 ```
 
@@ -332,7 +338,7 @@ Example outout (this will be the value we will use for `connection` within `meta
 cG9zdGdyZXNxbCtwc3ljb3BnMjovL2xlbmElNDBhaXJmbG93YXp1cmVkYjpQYXNzd29yZDEhQGFpcmZsb3dhenVyZWRiLnBvc3RncmVzLmRhdGFiYXNlLmF6dXJlLmNvbTo1NDMyL3Bvc3RncmVz
 ```
 
-Definition of Fernet Key secret is in the [`metadata-connection-secret.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/secrets/metadata-connection-secret.yaml) file on GitHub.
+Definition of the connection secret is in the [`metadata-connection-secret.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/secrets/metadata-connection-secret.yaml) file on GitHub.
 
 Replace the value of the `connection` parameter in the file with your base64-encoded connection value.
 
@@ -344,18 +350,17 @@ kubectl create -f secrets/metadata-connection-secret.yaml
 
 ### Config Map
 
-*******
+A [Config Map](https://kubernetes.io/docs/concepts/configuration/configmap/) is a resource that allows storing non-sensitive data in a key-value format. This is convenient for any type of configuration settings. Since Apache Airflow generally requires a configuration file called [`airflow.cfg`](https://airflow.apache.org/docs/stable/howto/set-config.html), we can use a Config Map to populate it with important parameters. For example:
+* `dags_folder` points to the folder within a pod that can be used to DAGs mounted from remote storage.
+* `dags_in_image` setting can be `True` or `False`. If `False` it will look at mounted volumes or git repository to find DAGs.
+* `dags_volume_claim` is the name of the Persistent Volume Claim for DAGs.
+* Settings that start with `git_` are relevant if you're planning to use Git repository to sync DAGs.
+* `worker_service_account_name` can be used to set the name of worker service account, and so on.
 
 Definition of Config Map is in the [`configmap.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/configmap.yaml) file on GitHub.
 
-If you are following this guide for Airflow with 
 
-dags_folder - Ensure the right folder is used for DAGs
-dags_in_image - If set to False, it will look at mounted volumes or git repo
-dags_volume_claim
-dags_volume_mount_point
-git_
-worker_service_account_name
+> Note: there are quite many key-value pairs that can be adjusted in the Config Map, so if you're doing a lot of experimentation, feel free to tweak some of them. However, also be sure to appropriately modify the necessary resource files as well, as many of the values in the Config Map will affect other resources.
 
 Create config map:
 
@@ -365,11 +370,16 @@ kubectl create -f configmap.yaml
 
 ### StatsD
 
-*******
+[StatsD](https://github.com/statsd/statsd) is a process that listens for various statistics, such as counters and timers. Apache Airflow has a built-in support for StatsD and is using its Python client to expose metrics. StatsD received infromation about number of job successes or failures, number of jobs that are in line waiting for execution, and similar coming from Airflow. If you're interested in specific types of metrics, take a look at this [page](https://airflow.apache.org/docs/stable/metrics.html).
 
-Definition of a StatsD deployment is in [`statsd-deployment.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/statsd/statsd-deployment.yaml) file on GitHub.
+Definition of a StatsD deployment is in [`statsd-deployment.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/statsd/statsd-deployment.yaml) file on GitHub. Definition of a StatsD service is in [`statsd-service.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/statsd/statsd-service.yaml) file on GitHub.
 
-Definition of a StatsD service is in [`statsd-service.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/statsd/statsd-service.yaml) file on GitHub.
+Create StatsD resources:
+
+```bash
+kubectl create -f statsd/statsd-deployment.yaml
+kubectl create -f statsd/statsd-service.yaml
+```
 
 Check the status of the StatsD instance and get its TCP port:
 
@@ -403,7 +413,10 @@ Open the `127.0.0.1:7000` page in your browser to see StatsD page:
 
 ### Scheduler
 
-*******
+Scheduler is one of the main components behind Apache Airflow.
+
+From documentation:
+> The Airflow [scheduler](https://airflow.apache.org/docs/stable/scheduler.html) monitors all tasks and all DAGs and triggers the Task instances whose dependencies have been met. Behind the scenes, it spins up a subprocess, which monitors and stays in sync with a folder for all DAG objects it may contain, and periodically (every minute or so) collects DAG parsing results and inspects active tasks to see whether they can be triggered.
 
 Definition of the Scheduler deployment is in [`scheduler-deployment.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/scheduler/scheduler-deployment.yaml) file on GitHub.
 
@@ -415,11 +428,9 @@ kubectl create -f scheduler/scheduler-deployment.yaml
 
 ### Webserver
 
-*******
+[Webserver and UI](https://airflow.apache.org/docs/stable/ui.html) component of Apache Airflow enables us to kickstart, schedule, monitor, and troubleshoot our data pipelines, as well as many other convenient functions.
 
-Definition of Webserver deployment is in [`webserver-deployment.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/webserver/webserver-deployment.yaml) file on GitHub.
-
-Definition of Webserver service is in [`webserver-service.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/webserver/webserver-service.yaml) file on GitHub.
+Definition of Webserver deployment is in [`webserver-deployment.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/webserver/webserver-deployment.yaml) file on GitHub. Definition of Webserver service is in [`webserver-service.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/webserver/webserver-service.yaml) file on GitHub.
 
 If you'd like the Webserver to have an external IP, replace `ClusterIP` with `LoadBalancer` in the `webserver-service.yaml`, and you will be able to access from the outside of the cluster without proxies or port forwarding.
 
@@ -594,3 +605,11 @@ To clean up your environment, just run:
 ```bash
 az group delete --name $RESOURCE_GROUP_NAME
 ```
+
+## Key Takeaways
+
+TBD
+
+## Author
+
+TBD
