@@ -24,23 +24,23 @@ In this article, I am focusing on [Apache Airflow](https://airflow.apache.org/) 
 
 Airflow is based on the following concepts and components:
 
-* DAG (Directed Acyclic Graph)
+* **DAG (Directed Acyclic Graph)**
 
   Airflow views our data pipleine as a set of tasks and dependencies between them. A DAG is defined using Python code describing the tasks and relationships between them.
 
-* Scheduler
+* **Scheduler**
 
   It discovers the DAGs that are ready to be triggered according to the associated schedule. When the scheduler discovers task failures, it can retry the DAG certain number of times if this option is enabled.
 
-* Webserver
+* **Webserver**
 
   Airflow provides a handy UI interface for viewing, scheduling, or triggering DAGs. It also offers useful infromation on task success or failure status, progress, duration, retries, logs, and more.
 
-* Executor
+* **Executor**
 
   Executor component's main function is actually running a task, assigning it to a specific node, and updating other components of its progress.
 
-* Metadata database
+* **Metadata database**
 
   A database where Airflow can to store metadata, configuration, and information on task progress.
 
@@ -48,9 +48,9 @@ Airflow is based on the following concepts and components:
 
 Airflow can be run on a single machine, which is great fit for the many data pipelines. In many cases when single machine isn't enough to keep up with the scale of data pipelines, Airflow can also be run in a distributed mode.
 
-Airflow can be distributed with Celery - a component that uses task queues as a mechanism to distribute work across machines. When using Celery, there is a requirement to have a number of nodes running up front to schedule tasks across them. Celery is deployed as an extra component in your system and requires a message transport to send and receive messages, such as Redis or RabbitMQ.
+Airflow can be distributed with [Celery](https://docs.celeryproject.org/en/stable/getting-started/introduction.html) - a component that uses task queues as a mechanism to distribute work across machines. When using Celery, there is a requirement to have a number of nodes running up front to schedule tasks across them. Celery is deployed as an extra component in your system and requires a message transport to send and receive messages, such as Redis or RabbitMQ.
 
-Alternatively, Airflow supports Kubernetes as a distributed executor. It doesn't require any additional components, like Redis. Kubernetes executor doesn't need to always keep certain number of workers alive as it creates a new pod for every job. The scalability of your system will only be limited by the amount of resources in your cluster.
+Alternatively, Airflow supports Kubernetes as a distributed executor. It doesn't require any additional components, like Redis. [Kubernetes executor](https://airflow.apache.org/docs/stable/executor/kubernetes.html) doesn't need to always keep certain number of workers alive as it creates a new pod for every job. The scalability of your system will only be limited by the amount of resources in your cluster.
 
 
 ## General architecture of Apache Airflow environment in the cloud
@@ -661,7 +661,7 @@ az group delete --name $RESOURCE_GROUP_NAME
 
 ## Key Takeaways and Next Steps
 
-Thank you for raeding! Hopefully this information will help you in practice.
+Thank you for reading! Hopefully this information will help you in practice.
 
 The summary of key takeaways:
 * We covered the importance of to understanding the differences and trade-offs between the variety of tools for building data pipelines
