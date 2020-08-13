@@ -1,10 +1,61 @@
-# Apache Airflow on Azure
+# Scalable Cloud Environment for Distributed Data Pipelines with Apache Airflow
 
 ## Introduction
 
-TBD
+Data pipelines, workflows, data movement and transformation, and ETL have always been relevant and important for a broad range of businesses. Over time, we are witnessing an increase in types of data sources and providers, disparity of data formats expected and consumed by different systems, and additional requirements for flexibility and adjustability of data pipelines. Correct choice of products and tools can greatly contribute to company's ability to get timely insights from data and effectively grow. The challenge often lies within selecting the right balance between the cost of maintenance of the tool, and level of its alignment with data pipeline functional requirements. 
 
-General architecture:
+Options for available data pipeline tools can be grouped into several categories:
+
+* Simple utilities, such as [cron](https://en.wikipedia.org/wiki/Cron), or in-house solutions. These are exellent for trivial data pipelines that don't require complex scheduling logic, custom and complex data integration or dependencies. Often data pipelines grow and evolve, and many of them may get too sophisticated to be efficiently managed through cron or in-house workflow utilities.
+
+* Platform-specific tools, such as [SSIS](https://docs.microsoft.com/en-us/sql/integration-services/sql-server-integration-services?WT.mc_id=airflow-blog-alehall), [Informatica PowerCenter](https://www.informatica.com/products/data-integration/powercenter.html), or [Pentaho Data Integration](https://help.pentaho.com/Documentation/7.1/0D0/Pentaho_Data_Integration), and cloud-based managed services, such as [AWS Glue](https://aws.amazon.com/glue/) or [Data Pipeline](https://aws.amazon.com/datapipeline/), or [Azure Data Factory](https://docs.microsoft.com/en-us/azure/data-factory/introduction?WT.mc_id=airflow-blog-alehall). Main advantages of cloud and platform-specific data pipeline services are tight integration with cloud or platform-specific products and moving data between them, as well as no need to manage underlying infrastructure for cloud-based services. Both platform and cloud-specific services for ETL may offer custom logic, however it's often limitedin terms of extensibility and applicability outside of a very fixed set of platform or cloud products.
+
+* Open-source data pipeline projects, such as [Apache Airflow](https://airflow.apache.org/), Apache [Oozie](https://oozie.apache.org/) or [Azkaban](https://azkaban.github.io/), [Dagster](https://docs.dagster.io/), [Prefect](https://www.prefect.io/). Common reasons for looking at these options for running data-pipeline workflows are flexibility for workflow scheduling, retries, and task dependencies, programmable control flow options and data pipeline definitions, and extensibility of working with custom data providers and types of operations.
+
+## What is covered in this article
+
+In this article, I am focusing on [Apache Airflow](https://airflow.apache.org/) as one of the most flexible, extensible, and popular in the community projects for reliable and scalable data and AI pipelines. I will cover:
+
+* Apache Airflow key concepts and why use it in distributed setting
+* General architecture for Apache Airflow environment in the cloud
+* Detailed guide for provisioning Apache Airflow on Kubernetes on Azure
+
+## Apache Airflow: Key Concepts
+
+Airflow is based on the following concepts and components:
+
+* DAG (Directed Acyclic Graph)
+
+  Airflow views our data pipleine as a set of tasks and dependencies between them. A DAG is defined using Python code describing the tasks and relationships between them.
+
+* Scheduler
+
+  It discovers the DAGs that are ready to be triggered according to the associated schedule. When the scheduler discovers task failures, it can retry the DAG certain number of times if this option is enabled.
+
+* Webserver
+
+  Airflow provides a handy UI interface for viewing, scheduling, or triggering DAGs. It also offers useful infromation on task success or failure status, progress, duration, retries, logs, and more.
+
+* Executor
+
+  Executor component's main function is actually running a task, assigning it to a specific node, and updating other components of its progress.
+
+* Metadata database
+
+  A database where Airflow can to store metadata, configuration, and information on task progress.
+
+### Scalable data workflows with Airflow on Kubernetes
+
+Airflow can be run on a single machine, which is great fit for the many data pipelines. In many cases when single machine isn't enough to keep up with the scale of data pipelines, Airflow can also be run in a distributed mode.
+
+Airflow can be distributed with Celery - a component that uses task queues as a mechanism to distribute work across machines. When using Celery, there is a requirement to have a number of nodes running up front to schedule tasks across them. Celery is deployed as an extra component in your system and requires a message transport to send and receive messages, such as Redis or RabbitMQ.
+
+Alternatively, Airflow supports Kubernetes as a distributed executor. It doesn't require any additional components, like Redis. Kubernetes executor doesn't need to always keep certain number of workers alive as it creates a new pod for every job. The scalability of your system will only be limited by the amount of resources in your cluster.
+
+
+## General architecture of Apache Airflow environment in the cloud
+
+Cloud-agnostic architecture:
 
 ![Diagram for generic use case](images/general-diagram.png)
 
@@ -17,7 +68,7 @@ GCP and AWS architecture:
 ![Diagram for GCP and AWS](images/google-aws-diagram.png)
 
 
-## Overview
+## Provisioning Apache Airflow on Kubernetes in the cloud
 
 To get started, you will need access to a cloud subscription, such as Azure, AWS, or Google Cloud. The example in this article is based on Azure, however, you should be able to successfully follow the same steps for AWS or GCP with minor changes.
 
@@ -608,10 +659,23 @@ To clean up your environment, just run:
 az group delete --name $RESOURCE_GROUP_NAME
 ```
 
-## Key Takeaways
+## Key Takeaways and Next Steps
 
-TBD
+Thank you for raeding! Hopefully this information will help you in practice.
+
+The summary of key takeaways:
+* We covered the importance of to understanding the differences and trade-offs between the variety of tools for building data pipelines
+* We learned about Apache Airflow as one of the most popular and widely adopted OSS projects for programmatic orchestration of data workflows
+* We looked at options and reasons for running Apache Airflow in a distributed setting
+* We reviewed the infrastructure architecture of provisioning a distributed Airflow setup in a cloud-agnistic environment, as well as in the cloud on Azure, AWS, and GCP
+* We followed the detailed end-to-end steps explaing how to implement one of those architectures on Azure
+
+As a next step, experiment and take a look at some of the DAG definitions and [integrations](https://airflow.apache.org/docs/stable/integration.html) available! 
+
 
 ## Author
 
-TBD
+Lena Hall is a Director of Engineering at Microsoft working on Azure, where she focuses on large-scale distributed systems and modern architectures. She is leading a team and technical strategy for product improvement efforts across Big Data services at Microsoft. Lena is the driver behind engineering initiatives and strategies to advance, facilitate and push forward further acceleration of cloud services. Lena has 10 years of experience in Solution Architecture and Software Engineering with a focus on distributed cloud programming, real-time system design, highly scalable and performant systems, big data analysis, data science, functional programming, and machine learning. Previously, she was a Senior Software Engineer at Microsoft Research. She’s co-organizes a conference called ML4ALL, and is often an invited member of program committees for conferences like Kafka Summit, Lambda World, and others. Lena holds a master’s degree in computer science.
+
+Twitter: [@lenadroid](https://twitter.com/lenadroid)
+LinkedIn: [Lena Hall](https://www.linkedin.com/in/lena-hall/)
