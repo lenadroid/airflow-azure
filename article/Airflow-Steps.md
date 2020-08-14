@@ -6,7 +6,7 @@ Data pipelines, workflows, data movement and transformation, and ETL have always
 
 Options for available data pipeline tools can be grouped into several categories:
 
-* Simple utilities, such as [cron](https://en.wikipedia.org/wiki/Cron), or in-house solutions. These are exellent for trivial data pipelines that don't require complex scheduling logic, custom and complex data integration or dependencies. Often data pipelines grow and evolve, and many of them may get too sophisticated to be efficiently managed through cron or in-house workflow utilities.
+* Simple utilities, such as [cron](https://en.wikipedia.org/wiki/Cron), or in-house solutions. These are excellent for trivial data pipelines that don't require complex scheduling logic, custom and complex data integration or dependencies. Often data pipelines grow and evolve, and many of them may get too sophisticated to be efficiently managed through cron or in-house workflow utilities.
 
 * Platform-specific tools, such as [SSIS](https://docs.microsoft.com/en-us/sql/integration-services/sql-server-integration-services?WT.mc_id=airflow-blog-alehall), [Informatica PowerCenter](https://www.informatica.com/products/data-integration/powercenter.html), or [Pentaho Data Integration](https://help.pentaho.com/Documentation/7.1/0D0/Pentaho_Data_Integration), and cloud-based managed services, such as [AWS Glue](https://aws.amazon.com/glue/) or [Data Pipeline](https://aws.amazon.com/datapipeline/), or [Azure Data Factory](https://docs.microsoft.com/en-us/azure/data-factory/introduction?WT.mc_id=airflow-blog-alehall). Main advantages of cloud and platform-specific data pipeline services are tight integration with cloud or platform-specific products and moving data between them, as well as no need to manage underlying infrastructure for cloud-based services. Both platform and cloud-specific services for ETL may offer custom logic, however it's often limitedin terms of extensibility and applicability outside of a very fixed set of platform or cloud products.
 
@@ -26,7 +26,7 @@ Airflow is based on the following concepts and components:
 
 * **DAG (Directed Acyclic Graph)**
 
-  Airflow views our data pipleine as a set of tasks and dependencies between them. A DAG is defined using Python code describing the tasks and relationships between them.
+  Airflow views our data pipeline as a set of tasks and dependencies between them. A DAG is defined using Python code describing the tasks and relationships between them.
 
 * **Scheduler**
 
@@ -34,7 +34,7 @@ Airflow is based on the following concepts and components:
 
 * **Webserver**
 
-  Airflow provides a handy UI interface for viewing, scheduling, or triggering DAGs. It also offers useful infromation on task success or failure status, progress, duration, retries, logs, and more.
+  Airflow provides a handy UI interface for viewing, scheduling, or triggering DAGs. It also offers useful information on task success or failure status, progress, duration, retries, logs, and more.
 
 * **Executor**
 
@@ -123,7 +123,7 @@ For AWS or GCP, feel free to use Amazon RDS for PostgreSQL or Google Cloud SQL f
 When running data management workflows, we need to store Apache Airflow Directed Acyclic Graph (DAG) definitions somewhere. When running Apache Airflow locally, we can store them in a local filesystem directory and point to it through the configuration file. When running Airflow in a Docker container (either locally or in the cloud), we have several options.
 * Storing data pipeline DAGs directly within the container image. The downside of this approach is when there is a possibility and likelihood of frequent changes to DAGs. This would imply the necessity to rebuild the image each time your DAGs change.
 * Storing DAG definitions in a remote Git repository. When there are changes within DAG definitions, using [Git-Sync sidecar](https://github.com/kubernetes/git-sync) can automatically synchronize the repository with the volume in your container.
-* Storing DAGs in a shared remote location, such as remote filesystem. Same as with a remote Git repository, we can mount a remote filesystem to a volume in our container and mirror DAG changes automatically. Kubernetes supports a variery of [CSI drivers](https://kubernetes-csi.github.io/docs/drivers.html) for many remote filesystems, including Azure Files, AWS Elastic File System, or Google Cloud Filestore. This approach is great if you also want to store logs somewhere in a remote location.
+* Storing DAGs in a shared remote location, such as remote filesystem. Same as with a remote Git repository, we can mount a remote filesystem to a volume in our container and mirror DAG changes automatically. Kubernetes supports a variety of [CSI drivers](https://kubernetes-csi.github.io/docs/drivers.html) for many remote filesystems, including Azure Files, AWS Elastic File System, or Google Cloud Filestore. This approach is great if you also want to store logs somewhere in a remote location.
 
 I am using [Azure Files](https://docs.microsoft.com/en-us/azure/storage/files/storage-how-to-create-file-share?WT.mc_id=airflow-blog-alehall) for storing DAG definitions. To create an Azure fileshare, execute the following commands:
 
@@ -274,7 +274,7 @@ logs-pvc   Bound    logs-pv   10Gi       RWX
 
 ### Service Accounts for scheduler and workers
 
-To allow certain processes perform certain tasks, there is a notion of [Service Accounts](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/). For example, we'd like to make sure Airflow scheduler is able to programmatically create, view, and manage pod resources for workers. To ensure this is possible, we need to create a Service Account for each component we want to grant certain priviliges to. Later, we can associate the Service Accounts with Cluster Roles by using Cluster Rolebindings.
+To allow certain processes perform certain tasks, there is a notion of [Service Accounts](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/). For example, we'd like to make sure Airflow scheduler is able to programmatically create, view, and manage pod resources for workers. To ensure this is possible, we need to create a Service Account for each component we want to grant certain privileges to. Later, we can associate the Service Accounts with Cluster Roles by using Cluster Rolebindings.
 
 Definition of Scheduler Service Account is in the [`scheduler-serviceaccount.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/scheduler/scheduler-serviceaccount.yaml) file on GitHub. Definition of Worker Service Account is in the [`worker-serviceaccount.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/workers/worker-serviceaccount.yaml) file on GitHub.
 
@@ -385,7 +385,7 @@ echo -n "postgresql+psycopg2://airflowuser:airlowpassword@airflowhost.postgres.d
 echo -n "postgresql+psycopg2://airflowuser%40airflowhost:airlowpassword@airflowhost.postgres.database.azure.com:5432/airflow" | base64
 ```
 
-Example outout (this will be the value we will use for `connection` within `metadata-connection-secret.yaml` file in this example):
+Example output (this will be the value we will use for `connection` within `metadata-connection-secret.yaml` file in this example):
 
 ```bash
 cG9zdGdyZXNxbCtwc3ljb3BnMjovL2xlbmElNDBhaXJmbG93YXp1cmVkYjpQYXNzd29yZDEhQGFpcmZsb3dhenVyZWRiLnBvc3RncmVzLmRhdGFiYXNlLmF6dXJlLmNvbTo1NDMyL3Bvc3RncmVz
@@ -423,7 +423,7 @@ kubectl create -f configmap.yaml
 
 ### StatsD
 
-[StatsD](https://github.com/statsd/statsd) is a process that listens for various statistics, such as counters and timers. Apache Airflow has a built-in support for StatsD and is using its Python client to expose metrics. StatsD received infromation about number of job successes or failures, number of jobs that are in line waiting for execution, and similar coming from Airflow. If you're interested in specific types of metrics, take a look at this [page](https://airflow.apache.org/docs/stable/metrics.html).
+[StatsD](https://github.com/statsd/statsd) is a process that listens for various statistics, such as counters and timers. Apache Airflow has a built-in support for StatsD and is using its Python client to expose metrics. StatsD received information about number of job successes or failures, number of jobs that are in line waiting for execution, and similar coming from Airflow. If you're interested in specific types of metrics, take a look at this [page](https://airflow.apache.org/docs/stable/metrics.html).
 
 Definition of a StatsD deployment is in [`statsd-deployment.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/statsd/statsd-deployment.yaml) file on GitHub. Definition of a StatsD service is in [`statsd-service.yaml`](https://github.com/lenadroid/airflow-azure/blob/master/resource-definitions/statsd/statsd-service.yaml) file on GitHub.
 
@@ -546,7 +546,7 @@ Example output:
 Viewer user newuser created.
 ```
 
-Afterwards, you can login to Airlow UI with credentials of any of the users you have provisioned.
+Afterwards, you can login to Airflow UI with credentials of any of the users you have provisioned.
 
 Airflow DAGs:
 
@@ -667,8 +667,8 @@ The summary of key takeaways:
 * We covered the importance of to understanding the differences and trade-offs between the variety of tools for building data pipelines
 * We learned about Apache Airflow as one of the most popular and widely adopted OSS projects for programmatic orchestration of data workflows
 * We looked at options and reasons for running Apache Airflow in a distributed setting
-* We reviewed the infrastructure architecture of provisioning a distributed Airflow setup in a cloud-agnistic environment, as well as in the cloud on Azure, AWS, and GCP
-* We followed the detailed end-to-end steps explaing how to implement one of those architectures on Azure
+* We reviewed the infrastructure architecture of provisioning a distributed Airflow setup in a cloud-agnostic environment, as well as in the cloud on Azure, AWS, and GCP
+* We followed the detailed end-to-end steps explaining how to implement one of those architectures on Azure
 
 As a next step, experiment and take a look at some of the DAG definitions and [integrations](https://airflow.apache.org/docs/stable/integration.html) available! 
 
